@@ -25,7 +25,7 @@ typedef struct {
 	For ROUTE_TOOL: name is tool to execute
 	For ROUTE_LOCAL/REMOTE_LLM: name is NULL
 	========================================*/
-	char* name;
+	char* commandId;
 	// Args for tool, if needed
 	const char* args;
 	float confidence;

@@ -13,14 +13,19 @@ typedef enum {
 } ParameterType;
 
 typedef struct {
-	const char* name,
+	const char* name;
 	ParameterType type;
 	bool required;
+
+	const char* const* enumValues;
+	size_t enumValueCount;
 } CommandParameter;
 
 typedef struct {
+	const char* id;
 	const char* name;
 	const char* description;
+	// Examples of requests that should map to respective command
 	const char* const *examples;
 	size_t exampleCount;
 	const char* const *keywords;
@@ -28,7 +33,9 @@ typedef struct {
 	const CommandParameter* parameters;
 	size_t parameterCount;
 	bool requiresConfirmation;
-	void* handler;
 } CommandDefinition;
+
+bool commandMatchesName(const CommandDefinition* command, const char* name);
+bool commandValidate(const CommandDefinition* command);
 
 #endif

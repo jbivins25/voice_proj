@@ -4,23 +4,28 @@
 #include "command.h"
 #include "command_registry.h"
 
+#include <stdbool.h>
+#include <stddef.h>
+
+#define CLASSIFIER_MAX_CANDIDATES 5
+
 typedef struct {
 	const CommandDefinition* command;
 	float score;
 } ClassificationCandidate;
 
-#define CLASSIFIER_MAX_CANDIDATES 5
-
 typedef struct {
 	ClassificationCandidate candidates[CLASSIFIER_MAX_CANDIDATES];
+	size_t count;
 } ClassificationResult;
 
 typedef struct {
 	void* data;
 } Classifier;
 
-void classifierInit(Classifier* classifier, const CommandRegistry* registry);
+bool classifierInit(Classifier* classifier, const CommandRegistry* registry);
 void classifierDestroy(Classifier* classifier);
 ClassificationResult classifierClassify(Classifier* classifier, const char* text);
+bool classifierIsConfident(const ClassificationResult* result);
 
 #endif
