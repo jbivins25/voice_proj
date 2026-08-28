@@ -1,193 +1,132 @@
-#include "classifier.h"
-#include "command_registry.h"
+#include "assistant.h"
+#include "formatter.h"
+#include "llm.h"
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-
-/*
- * Commands supplied by test/test_commands.c
- */
 extern const CommandDefinition* testCommands[];
 extern const size_t testCommandCount;
 
-static void printResults(
-        const ClassificationResult* result)
-{
-        printf("\n");
-
-        if (result->count == 0) {
-                printf("No candidates.\n");
-                return;
-        }
-
-        printf("Candidates:\n");
-
-        for (size_t i = 0;
-             i < result->count;
-             i++) {
-
-                const ClassificationCandidate* candidate =
-                        &result->candidates[i];
-
-                printf(
-                        "  %zu. %-32s %.3f\n",
-                        i + 1,
-                        candidate->command->id,
-                        candidate->score
-                );
-        }
-
-        bool confident =
-                classifierIsConfident(result);
-
-        printf(
-                "\nConfident: %s\n",
-                confident ? "YES" : "NO"
-        );
-
-        if (result->count >= 2) {
-
-                float margin =
-                        result->candidates[0].score -
-                        result->candidates[1].score;
-
-                printf(
-                        "Score margin: %.3f\n",
-                        margin
-                );
-        }
-
-        if (confident) {
-                printf(
-                        "Selected: %s\n",
-                        result->candidates[0]
-                                .command->id
-                );
-        }
-}
+extern const ToolDefinition* testTools[];
+extern const size_t testToolCount;
 
 int main(void)
 {
-        CommandRegistry registry;
+Assistant assistant;
 
-        commandRegistryInit(&registry);
+    if (!assistantInit(
+            &assistant,
+            testCommands,
+            testCommandCount,
+            testTools,
+            testToolCount)) {
 
+            fprintf(
+                    stderr,
+                    "Failed to initialize assistant.\n"
+            );
 
-        /*
-         * Register all test commands.
-         */
-        for (size_t i = 0;
-             i < testCommandCount;
-             i++) {
+            return EXIT_FAILURE;
+    }
 
-                if (!commandRegistryRegister(
-                        &registry,
-                        testCommands[i])) {
+    if (!llmInit()) {
+            fprintf(
+                    stderr,
+                    "Failed to initialize LLM.\n"
+            );
 
-                        fprintf(
-                                stderr,
-                                "Failed to register command: %s\n",
-                                testCommands[i]->id
-                        );
+            assistantDestroy(
+                    &assistant
+            );
 
-                        commandRegistryDestroy(&registry);
+            return EXIT_FAILURE;
+    }
 
-                        return EXIT_FAILURE;
-                }
-        }
+    printf(
+            "Registered %zu commands.\n",
+            testCommandCount
+    );
 
+    printf(
+            "Registered %zu tools.\n",
+            testToolCount
+    );
 
-        printf(
-                "Registered %zu commands.\n",
-                commandRegistryCount(&registry)
-        );
+    printf(
+            "\n"
+            "Assistant initialized.\n"
+            "Type a request.\n"
+            "Type 'quit' to exit.\n\n"
+    );
 
+    char input[1024];
+    unsigned long convId = 1;
 
-        /*
-         * Initialize classifier.
-         */
-        Classifier classifier;
+    while (true) {
 
-        if (!classifierInit(
-                &classifier,
-                &registry)) {
+            printf("> ");
+            fflush(stdout);
 
-                fprintf(
-                        stderr,
-                        "Failed to initialize classifier.\n"
-                );
+            if (fgets(
+                    input,
+                    sizeof(input),
+                    stdin
+            ) == NULL)
+                    break;
 
-                commandRegistryDestroy(&registry);
+            input[
+                    strcspn(
+                            input,
+                            "\r\n"
+                    )
+            ] = '\0';
 
-                return EXIT_FAILURE;
-        }
+            if (strcmp(input, "quit") == 0 ||
+                strcmp(input, "exit") == 0)
+                    break;
 
+            if (input[0] == '\0')
+                    continue;
 
-        printf(
-                "Classifier initialized.\n"
-        );
+            Response response =
+                    assistantProcess(
+                            &assistant,
+                            input,
+                            convId
+                    );
 
-        printf(
-                "\nType a request to classify it.\n"
-                "Type 'quit' to exit.\n\n"
-        );
+            FormattedResponse formatted =
+                    formatterFormat(
+                            &response
+                    );
 
+            if (formatted.display &&
+                formatted.text != NULL) {
 
-        /*
-         * Interactive testing loop.
-         */
-        char input[1024];
+                    printf(
+                            "%s\n",
+                            formatted.text
+                    );
+            }
 
-        while (true) {
+            formatterDestroy(
+                    &formatted
+            );
 
-                printf("> ");
-                fflush(stdout);
+            responseDestroy(
+                    &response
+            );
+    }
 
-                if (fgets(
-                        input,
-                        sizeof(input),
-                        stdin
-                ) == NULL) {
+    llmDestroy();
 
-                        break;
-                }
+    assistantDestroy(
+            &assistant
+    );
 
-
-                /*
-                 * Remove trailing newline.
-                 */
-                input[strcspn(input, "\r\n")] = '\0';
-
-
-                if (strcmp(input, "quit") == 0 ||
-                    strcmp(input, "exit") == 0) {
-
-                        break;
-                }
-
-
-                if (input[0] == '\0')
-                        continue;
-
-
-                ClassificationResult result =
-                        classifierClassify(
-                                &classifier,
-                                input
-                        );
-
-                printResults(&result);
-
-                printf("\n");
-        }
-
-
-        classifierDestroy(&classifier);
-
-        commandRegistryDestroy(&registry);
-
-        return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
+

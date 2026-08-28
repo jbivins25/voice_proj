@@ -1,3 +1,5 @@
 *.o
 *.exe
-
+.gitignore
+test
+test/*

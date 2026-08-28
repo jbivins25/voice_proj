@@ -37,7 +37,8 @@ typedef struct {
 } Router;
 
 bool routerInit(Router* router);
+bool routerInitClassifier(Router* router);
 void routerDestroy(Router* router);
-RouteResult routerRoute(const UserRequest* request);
+RouteResult routerRoute(Router* route, const UserRequest* request);
 
 #endif

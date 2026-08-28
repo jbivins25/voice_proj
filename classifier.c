@@ -801,3 +801,17 @@ bool classifierIsConfident(const ClassificationResult* result) {
 
 	return true;
 }
+
+bool classifierShouldClarify(const ClassificationResult* result) {
+	if (result == NULL || result->count == 0) return false;
+
+	float best = result->candidates[0].score;
+
+	if (result->count >= 2) {
+		float second = result->candidates[1].score;
+
+		return (best >= MIN_CONFIDENCE && (best - second) < MIN_SCORE_MARGIN);
+	}
+
+	return (best > 0.5f && best < MIN_CONFIDENCE);
+}

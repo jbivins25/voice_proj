@@ -27,5 +27,6 @@ bool classifierInit(Classifier* classifier, const CommandRegistry* registry);
 void classifierDestroy(Classifier* classifier);
 ClassificationResult classifierClassify(Classifier* classifier, const char* text);
 bool classifierIsConfident(const ClassificationResult* result);
+bool classifierShouldClarify(const ClassificationResult* result);
 
 #endif
